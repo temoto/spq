@@ -19,9 +19,12 @@ type Box struct {
 }
 
 func (b *Box) Bytes() []byte { return b.value }
-func (b *Box) Empty() bool   { return (b.value == nil) && (b.err == nil) }
 func (b *Box) Unmarshal(x encoding.BinaryUnmarshaler) error {
 	return x.UnmarshalBinary(b.value)
+}
+
+func (b *Box) empty() bool {
+	return (b.value == nil) && (b.err == nil)
 }
 
 func encodeKey(key []byte, id uint64) {

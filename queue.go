@@ -7,15 +7,18 @@ import (
 	"sync"
 
 	"github.com/syndtr/goleveldb/leveldb"
-	dbopt "github.com/syndtr/goleveldb/leveldb/opt"
-	dbutil "github.com/syndtr/goleveldb/leveldb/util"
+	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/syndtr/goleveldb/leveldb/storage"
+	"github.com/syndtr/goleveldb/leveldb/util"
 )
+
+const OnlyForTesting = "\x00"
 
 type Queue struct { //nolint:maligned
 	db         *leveldb.DB
-	dbROpt     dbopt.ReadOptions
-	dbWOpt     dbopt.WriteOptions
-	dbRangeAll *dbutil.Range
+	dbROpt     opt.ReadOptions
+	dbWOpt     opt.WriteOptions
+	dbRangeAll *util.Range
 
 	mu      sync.RWMutex
 	closed  bool
@@ -31,12 +34,12 @@ func Open(path string) (*Queue, error) {
 		stopch:  make(chan struct{}),
 		rdonech: make(chan struct{}),
 
-		dbROpt: dbopt.ReadOptions{},
-		dbWOpt: dbopt.WriteOptions{
+		dbROpt: opt.ReadOptions{},
+		dbWOpt: opt.WriteOptions{
 			NoWriteMerge: true,
 			Sync:         true,
 		},
-		dbRangeAll: &dbutil.Range{
+		dbRangeAll: &util.Range{
 			Start: itemKeyPrefix[:],
 			Limit: itemKeyLimit[:],
 		},
@@ -46,19 +49,23 @@ func Open(path string) (*Queue, error) {
 }
 
 func (q *Queue) load(path string) error {
-	opt := &dbopt.Options{
+	opt := &opt.Options{
 		BlockCacheCapacity:   -1,
 		BlockRestartInterval: 1, // checksum each key, if I understood doc correctly
 		BlockSize:            1 << 10,
 		DisableBlockCache:    true,
 		NoSync:               false,
 		NoWriteMerge:         true,
-		Strict:               dbopt.StrictJournalChecksum | dbopt.StrictBlockChecksum,
+		Strict:               opt.StrictJournalChecksum | opt.StrictBlockChecksum,
 		WriteBuffer:          4 << 10,
 	}
 	var err error
-	q.db, err = leveldb.RecoverFile(path, opt)
-	// q.db, err = leveldb.OpenFile(path, opt)
+	if path == OnlyForTesting {
+		q.db, err = leveldb.Open(storage.NewMemStorage(), opt)
+	} else {
+		q.db, err = leveldb.RecoverFile(path, opt)
+		// q.db, err = leveldb.OpenFile(path, opt)
+	}
 	if err != nil {
 		return err
 	}
@@ -123,7 +130,7 @@ func (q *Queue) Peek() (Box, error) {
 			box = Box{err: ErrClosed}
 		}
 		q.mu.RUnlock()
-		if !box.Empty() {
+		if !box.empty() {
 			return box, box.err
 		}
 		select {
