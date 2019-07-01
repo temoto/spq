@@ -15,3 +15,11 @@ Credits
 This library would be poorly reinvented wheel without following great work:
 - https://github.com/beeker1121/goque
 - https://github.com/syndtr/goleveldb
+
+
+Flair
+=====
+
+[![Build status](https://travis-ci.org/temoto/spq.svg?branch=master)](https://travis-ci.org/temoto/alive)
+[![Coverage](https://codecov.io/gh/temoto/spq/branch/master/graph/badge.svg)](https://codecov.io/gh/temoto/alive)
+[![Go Report Card](https://goreportcard.com/badge/github.com/temoto/spq)](https://goreportcard.com/report/github.com/temoto/alive)
