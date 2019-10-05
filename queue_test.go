@@ -46,6 +46,22 @@ func TestPushStopPushPop(t *testing.T) {
 	testPeekExpectDelete(t, q, testItem(303))
 }
 
+func TestDeletePush(t *testing.T) {
+	q, tmpdir := testNew(t)
+	defer os.RemoveAll(tmpdir)
+	require.NoError(t, q.MarshalPush(testItem(101)))
+	require.NoError(t, q.MarshalPush(testItem(202)))
+	require.NoError(t, q.MarshalPush(testItem(303)))
+	dbList(t, q)
+
+	box := testPeekExpect(t, q, testItem(101))
+	require.NoError(t, q.DeletePush(box))
+
+	testPeekExpectDelete(t, q, testItem(202))
+	testPeekExpectDelete(t, q, testItem(303))
+	testPeekExpectDelete(t, q, testItem(101))
+}
+
 func TestConcurrent(t *testing.T) {
 	const n = 100
 

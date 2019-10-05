@@ -158,6 +158,31 @@ func (q *Queue) Delete(box Box) error {
 	return q.db.Delete(box.key[:], &q.dbWOpt)
 }
 
+// Atomic Delete+Push
+func (q *Queue) DeletePush(box Box) error {
+	if _, err := unkey(box.key[:]); err != nil {
+		return err
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if q.closed {
+		return ErrClosed
+	}
+
+	var newKey [keyLen]byte
+	encodeKey(newKey[:], q.next)
+	b := leveldb.Batch{}
+	b.Delete(box.key[:])
+	b.Put(newKey[:], box.value)
+	err := q.db.Write(&b, &q.dbWOpt)
+	if err != nil {
+		return err
+	}
+	q.next++
+	signal(q.readch)
+	return nil
+}
+
 func (q *Queue) dbReadFirst() Box {
 	iter := q.db.NewIterator(q.dbRangeAll, &q.dbROpt)
 	defer iter.Release()
