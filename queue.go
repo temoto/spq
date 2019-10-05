@@ -6,6 +6,7 @@ import (
 	"encoding"
 	"sync"
 
+	"github.com/juju/errors"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
@@ -67,7 +68,11 @@ func (q *Queue) load(path string) error {
 		// q.db, err = leveldb.OpenFile(path, opt)
 	}
 	if err != nil {
-		return err
+		return errors.Annotate(err, "leveldb open")
+	}
+	err = q.db.CompactRange(util.Range{})
+	if err != nil {
+		return errors.Annotate(err, "leveldb compact")
 	}
 
 	iter := q.db.NewIterator(q.dbRangeAll, &q.dbROpt)
@@ -75,7 +80,7 @@ func (q *Queue) load(path string) error {
 	if iter.Last() {
 		q.next, err = unkey(iter.Key())
 		if err != nil {
-			return err
+			return errors.Annotatef(err, "spq load key=%x", iter.Key())
 		}
 	}
 	q.next++
